@@ -1,0 +1,125 @@
+# DATA IMPORT
+# library imports
+import string
+import nltk
+import spacy
+import sys
+import pandas as pd
+import wordcloud
+import lexical_diversity
+import re
+import collections
+import matplotlib.pyplot as plt
+
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import wordnet
+from nltk import pos_tag
+from wordcloud import WordCloud
+from lexical_diversity import lex_div as ld
+
+# read in .txt file, get rid of trailing newlines
+txt_file = open("comm.txt")
+book_excerpt = txt_file.read().replace("\n", " ")
+txt_file.close()
+
+# DATA CLEANING
+# convert text to lowercase, then remove both non-alphanumeric questions and digits
+book_excerpt_stripped = book_excerpt.lower()
+book_excerpt_stripped = book_excerpt_stripped.translate(str.maketrans('', '', string.punctuation))
+book_excerpt_stripped = re.sub(" \d+", " ", book_excerpt_stripped)
+
+# tokenize text
+book_excerpt_tokens = nltk.word_tokenize(book_excerpt_stripped)
+
+# remove stopwords
+book_excerpt_tokens = [word for word in book_excerpt_tokens if not word in stopwords.words('english')]
+
+# attempt at stemming (for demonstration purposes, won't stick with this one)
+porter_stemmer = PorterStemmer()
+
+for word in book_excerpt_tokens:
+    print(word + ' -> ' + porter_stemmer.stem(word))
+
+# gonna try lemmatization - first, let's make function for mapping wordnet lexical item to POS tag
+def pos_lemmatizer(word):
+    tag = nltk.pos_tag([word])[0][1][0].upper()
+    tag_dict = {"J": wordnet.ADJ,
+                "N": wordnet.NOUN,
+                "V": wordnet.VERB,
+                "R": wordnet.ADV}
+
+    return tag_dict.get(tag, wordnet.NOUN)
+
+# call function to lemmatize string
+lemmatizer = WordNetLemmatizer()
+book_excerpt_lemmatized = [lemmatizer.lemmatize(w, pos_lemmatizer(w)) for w in book_excerpt_tokens]
+
+# DATA EXPLORATION + ANALYSIS
+# calculating word frequency - use the most_common() function to call top x words
+dist = nltk.FreqDist(book_excerpt_lemmatized) 
+for word, frequency in dist.most_common(10): 
+    print(u'{};{}'.format(word, frequency))
+    
+# alternate method of calculating word frequency - end user gets to choose however many top words to display
+word_freq_dict = dict(dist) 
+words_to_print = int(input("How many most common words to print: ")) 
+
+print("\nOK. The {} most common words are as follows\n".format(words_to_print)) 
+
+word_counter = collections.Counter(word_freq_dict) 
+
+for word, count in word_counter.most_common(words_to_print): 
+    print(word, ": ", count)
+
+# wordcloud creation
+# creating a wordcloud - since wordclouds can't use tokens as input, we have to convert it to a string
+# begin by initializing an empty string, which will be the landing pad for when we pass our lemmatized text into the listToString() function
+def listToString(s):  
+    str1 = " " 
+    
+    # return string   
+    return (str1.join(s))
+
+book_excerpt_lemmatized_str = listToString(book_excerpt_lemmatized) 
+
+# check to see what what conversion created
+book_excerpt_lemmatized_str
+
+# customize the y and x axes of the plot
+lst = word_counter.most_common(words_to_print) 
+wordcount_df = pd.DataFrame(lst, columns = ['Word', 'Count']) 
+wordcount_df.plot.bar(x='Word',y='Count', title = "Most Commonly Used Words")
+wordcloud = WordCloud(width=800, height=500, random_state=21, max_font_size=110, background_color = "white", max_words = 40).generate(book_excerpt_lemmatized_str)
+
+# plot the wordcloud
+plt.figure(figsize=(10, 7))
+plt.imshow(wordcloud, interpolation="bilinear")
+plt.axis('off')
+plt.show()
+
+# calculate lexical diversity
+# text-type ratio is used to divide the amount of unique lexical terms by the total number of words
+ld.ttr(book_excerpt_lemmatized)
+
+# remember! we're reusing our cookbook_excerpt_tokens variable from earlier! 
+book_excerpt_pos_tags = nltk.pos_tag(book_excerpt_tokens)
+
+# create dataframe to hold the list; this will make for easier visualization
+pos_df = pd.DataFrame(book_excerpt_pos_tags)
+pos_df.columns = ['token', 'part_of_speech_tag']
+#pos_df.head()
+
+# create a count value and add to dataframe 
+pos_count = pos_df['part_of_speech_tag'].value_counts()
+type(pos_count) # currently series, need to turn to dataframe
+pos_count_df = pos_count.to_frame() 
+pos_count_df.head()
+
+# visualize distribution of part of speech (bar plot version of chart above)
+pos_count_df.plot(kind = 'bar', title = "Distribution of Part of Speech Tags in Our Excerpt")
+plt.xlabel('part of speech tag')
+plt.ylabel('count')
+plt.show()
