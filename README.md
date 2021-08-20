@@ -1,5 +1,5 @@
 # A Starter Guide to Text Analysis Methods in Python
-This is a walkthrough of basic text analytics in Python, working with an excerpt from a cookbook from 1871. You can read more background surrounding this project at the accompanying blog post: 
+This is a walkthrough of basic text analytics in Python, working with an excerpt from a cookbook from 1871. You can read more background surrounding this project at the accompanying blog post: https://medium.com/@shaynechammavanijakul/a-starter-guide-to-text-analysis-methods-in-python-f7e5e0acdfd2 
 
 In this repo, you'll find the following materials:
 
